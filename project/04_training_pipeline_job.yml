@@ -1,0 +1,49 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+experiment_name: 04_pipeline_oh4ml_2step
+description: 2-Step Pipeline Example (Train, Register)
+
+# <inputs_and_outputs>
+inputs:
+  input: 
+    type: uri_file
+    #path: azureml:diabetes_data_oh4ml@latest
+    path: azureml:diabetes_data_oh4ml_350records@latest
+  model_name: diabetes_model_oh4ml
+outputs: 
+  outputs:
+
+settings:
+  default_datastore: azureml:workspaceblobstore
+  default_compute: azureml:demo-cpucluster1
+  continue_on_step_failure: false
+
+jobs:
+  train_model:
+    name: train_model
+    display_name: train-model
+    code: ./scripts
+    command: >-
+      python train.py 
+      --input_data ${{inputs.diabetes_data}} 
+      --output_dir ${{outputs.model_output}}
+    environment: azureml:diabetes-env@latest
+    inputs:
+      diabetes_data: ${{parent.inputs.input}}
+    outputs:
+      model_output: ${{parent.outputs.outputs}}
+
+  register_model:
+    name: register_model
+    display_name: register-model
+    code: ./scripts
+    command: >-
+      python register.py 
+      --model_name ${{inputs.model_name}} 
+      --model_path ${{inputs.model_path}} 
+      --deploy_flag ${{inputs.deploy_flag}}
+    environment: azureml:diabetes-env@latest
+    inputs:
+      model_name: ${{parent.inputs.model_name}}
+      model_path: ${{parent.jobs.train_model.outputs.model_output}}
+      deploy_flag: 1
